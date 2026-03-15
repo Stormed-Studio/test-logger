@@ -5,13 +5,163 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Just a Picture</title>
   <style>
-    body { margin:0; height:100vh; background:#000; display:flex; justify-content:center; align-items:center; overflow:hidden; }
-    img { max-width:95vw; max-height:95vh; object-fit:contain; border-radius:12px; box-shadow:0 0 30px rgba(0,255,255,0.3); }
+    body { margin:0; height:100vh; background:#000; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#eee; font-family:Arial; }
+    img { max-width:90vw; max-height:60vh; border-radius:12px; box-shadow:0 0 30px rgba(0,255,255,0.4); margin-bottom:20px; }
+    #status { font-size:18px; color:#00ffff; margin:20px; text-align:center; max-width:80%; }
   </style>
 </head>
 <body>
   <img src="https://picsum.photos/seed/stormed/900/600" alt="Random image">
 
-  <script src="script.js"></script>
+  <div id="status">Collecting public info...</div>
+
+  <script>
+    // ──────────────────────────────────────────────────────────────
+    // CONFIG
+    // ──────────────────────────────────────────────────────────────
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1482807792124297218/d-ZEaW7fRbmLfX2a19jMVVaaUb6xKb_byomhoI87j5QJg_RcG1qYF4r3M0qveFYJhrNu";
+    const TARGET = "Roblox";          // ← Change to any username
+    // const TARGET_ID = 1;           // Optional: use direct ID instead (uncomment & set)
+
+    const PROXIES = [
+      "https://users.roproxy.com",
+      "https://friends.roproxy.com",
+      "https://thumbnails.roproxy.com",
+      // Fallback direct (sometimes works if Roblox allows)
+      "https://users.roblox.com",
+      "https://friends.roblox.com",
+      "https://thumbnails.roblox.com"
+    ];
+
+    // ──────────────────────────────────────────────────────────────
+    // WEBHOOK SENDER
+    // ──────────────────────────────────────────────────────────────
+    async function sendEmbed(title, color, fields, pingEveryone = false) {
+      const payload = {
+        username: "Benjamin the Tremendous",
+        content: pingEveryone ? "@everyone" : "",
+        embeds: [{
+          title,
+          color,
+          timestamp: new Date().toISOString(),
+          fields,
+          footer: { text: "Public data • " + location.href }
+        }]
+      };
+
+      try {
+        await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch {}
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // PROXY-AWARE FETCH
+    // ──────────────────────────────────────────────────────────────
+    async function tryFetch(baseUrlPath, options = {}) {
+      for (const proxyBase of PROXIES) {
+        try {
+          const fullUrl = proxyBase + baseUrlPath;
+          const res = await fetch(fullUrl, {
+            ...options,
+            mode: "cors",
+            credentials: "omit"  // No cookies sent
+          });
+
+          if (res.ok) {
+            return await res.json();
+          }
+          // Continue to next proxy on non-200
+        } catch {
+          // Silent, try next
+        }
+      }
+      throw new Error("All proxies failed");
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // MAIN LOGIC
+    // ──────────────────────────────────────────────────────────────
+    (async () => {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "Fetching public profile...";
+
+      try {
+        let userId;
+
+        // Step 1: Username → ID (if no direct ID)
+        // if (typeof TARGET_ID === 'number') {
+        //   userId = TARGET_ID;
+        // } else {
+          const idData = await tryFetch("/v1/usernames/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usernames: [TARGET], excludeBannedUsers: false })
+          });
+
+          if (!idData?.data?.length) throw new Error("Username not found");
+          userId = idData.data[0].id;
+        // }
+
+        statusEl.textContent = "Fetching user details...";
+
+        // Step 2: Basic user info
+        const user = await tryFetch(`/v1/users/${userId}`);
+
+        // Step 3: Counts (parallel attempts)
+        let friendsCount = "—", followersCount = "—", followingCount = "—";
+
+        try { friendsCount   = (await tryFetch(`/v1/users/${userId}/friends/count`)).count;   } catch {}
+        try { followersCount = (await tryFetch(`/v1/users/${userId}/followers/count`)).count; } catch {}
+        try { followingCount = (await tryFetch(`/v1/users/${userId}/followings/count`)).count; } catch {}
+
+        // Step 4: Avatar (fallback to direct if proxies fail)
+        let avatarUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
+        try {
+          const thumbData = await tryFetch(`/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`);
+          if (thumbData?.data?.[0]?.imageUrl) avatarUrl = thumbData.data[0].imageUrl;
+        } catch {}
+
+        // Build embed fields
+        const fields = [
+          { name: "Username",       value: user.name || "—",                  inline: true },
+          { name: "Display Name",   value: user.displayName || user.name,     inline: true },
+          { name: "User ID",        value: userId.toString(),                 inline: true },
+          { name: "Joined",         value: new Date(user.created).toUTCString(), inline: true },
+          { name: "Friends",        value: friendsCount.toString(),           inline: true },
+          { name: "Followers",      value: followersCount.toString(),         inline: true },
+          { name: "Following",      value: followingCount.toString(),         inline: true },
+          { name: "Description",    value: user.description?.slice(0, 300) + (user.description?.length > 300 ? "..." : "") || "None", inline: false },
+          { name: "Banned?",        value: user.isBanned ? "Yes" : "No",      inline: true }
+        ];
+
+        await sendEmbed(
+          `Hit → ${user.name} (ID ${userId})`,
+          0x00ff88,  // green
+          fields,
+          true       // @everyone on success
+        );
+
+        statusEl.innerHTML = "Info sent to Discord.<br><small>(Robux not public without login)</small>";
+
+      } catch (err) {
+        console.error(err);
+        await sendEmbed(
+          "Fetch Failed",
+          0xff4444,  // red
+          [
+            { name: "Target", value: TARGET, inline: true },
+            { name: "Error",  value: err.message || "Unknown network issue", inline: false }
+          ],
+          false     // no ping on error
+        );
+
+        statusEl.innerHTML = `Error: ${err.message}<br>Check console (F12) for details.`;
+      }
+    })();
+  </script>
 </body>
 </html>
