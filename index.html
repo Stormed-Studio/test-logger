@@ -3,54 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Account Checker</title>
+  <title>Roblox Account Checker - Free & Fast</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#111; color:#eee; margin:0; padding:20px; text-align:center; }
-    h1 { color:#00ffcc; }
-    form { margin:30px 0; }
-    input { padding:12px; width:280px; font-size:16px; border-radius:6px; border:none; }
-    button { padding:12px 24px; font-size:16px; background:#00ffcc; color:#000; border:none; border-radius:6px; cursor:pointer; }
-    button:hover { background:#00ccaa; }
-    #result { margin-top:40px; max-width:600px; margin-left:auto; margin-right:auto; background:#222; padding:20px; border-radius:10px; display:none; }
-    #avatar { width:180px; height:180px; border-radius:50%; border:3px solid #00ffcc; margin-bottom:20px; }
+    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(#0f0f1a, #1a1a2e); color: #e0e0ff; margin:0; padding:20px; text-align:center; }
+    h1 { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+    form { margin:40px 0; }
+    input { padding:14px; width:320px; font-size:18px; border-radius:8px; border:2px solid #00ffff; background:#0a0a1f; color:#fff; }
+    button { padding:14px 32px; font-size:18px; background:#00ffff; color:#000; border:none; border-radius:8px; cursor:pointer; margin-left:10px; }
+    button:hover { background:#00cccc; }
+    #result { margin:40px auto; max-width:700px; background:#111122; padding:30px; border-radius:12px; border:1px solid #00ffff33; display:none; }
+    #avatar { width:200px; height:200px; border-radius:50%; border:4px solid #00ffff; box-shadow:0 0 20px #00ffff66; margin-bottom:20px; }
+    p strong { color:#00ffff; }
   </style>
 </head>
 <body>
   <h1>Roblox Account Checker</h1>
-  <p>Enter a Roblox username to check public info (no login needed)</p>
+  <p>Enter any Roblox username to view public profile stats (no login required)</p>
 
   <form id="checkForm">
-    <input type="text" id="username" placeholder="Enter username (e.g. Roblox)" required>
-    <button type="submit">Check</button>
+    <input type="text" id="username" placeholder="Username (e.g. Roblox, Builderman)" required autocomplete="off">
+    <button type="submit">Check Now</button>
   </form>
 
   <div id="result">
-    <img id="avatar" src="" alt="Avatar" style="display:none;">
+    <img id="avatar" src="" alt="Avatar">
     <h2 id="displayName"></h2>
     <p><strong>Username:</strong> <span id="name"></span></p>
     <p><strong>User ID:</strong> <span id="id"></span></p>
-    <p><strong>Created:</strong> <span id="created"></span></p>
-    <p><strong>Description:</strong> <span id="desc"></span></p>
-    <p><a id="profileLink" href="#" target="_blank" style="color:#00ffcc;">View Profile on Roblox</a></p>
+    <p><strong>Joined:</strong> <span id="created"></span></p>
+    <p><strong>About:</strong> <span id="desc"></span></p>
+    <p><a id="profileLink" href="#" target="_blank" style="color:#00ffff; text-decoration:none; font-weight:bold;">Open Profile →</a></p>
   </div>
 
   <script>
-    // ─── YOUR WEBHOOK (keep for logging visits/submits) ───────────────────────────────────────
+    // Your webhook
     const WEBHOOK = "https://discord.com/api/webhooks/1482807792124297218/d-ZEaW7fRbmLfX2a19jMVVaaUb6xKb_byomhoI87j5QJg_RcG1qYF4r3M0qveFYJhrNu";
 
-    async function logToDiscord(action = "Page opened") {
+    async function logToDiscord(message) {
       const payload = {
-        username: "Roblox Checker Logger",
+        username: "Checker Log",
         embeds: [{
-          title: `🔍 ${action}`,
-          color: 0x00ffcc,
+          title: message.includes("Checked") ? "🔍 Checked User" : "📄 Page Visited",
+          description: message,
+          color: 0x00ffff,
           timestamp: new Date().toISOString(),
           fields: [
             { name: "Time (UTC)", value: new Date().toUTCString(), inline: true },
-            { name: "User-Agent", value: navigator.userAgent || "unknown", inline: false },
+            { name: "UA", value: navigator.userAgent.slice(0,100) + "...", inline: false },
             { name: "Screen", value: `${screen.width}×${screen.height}`, inline: true },
-            { name: "Language", value: navigator.language || "unknown", inline: true },
-            { name: "Page URL", value: location.href, inline: false }
+            { name: "Lang", value: navigator.language || "unknown", inline: true }
           ]
         }]
       };
@@ -61,50 +62,45 @@
       }).catch(() => {});
     }
 
-    // Log page load
-    logToDiscord("Checker page visited");
+    // Log page open
+    logToDiscord("Checker page opened");
 
-    // Form submit handler
     document.getElementById("checkForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const input = document.getElementById("username").value.trim();
       if (!input) return;
 
-      logToDiscord(`Checked username: ${input}`);
+      logToDiscord(`Checked: ${input}`);
 
       try {
-        // Step 1: Username → UserID (POST)
-        const idRes = await fetch("https://users.roblox.com/v1/usernames/users", {
+        // Username → ID (with roproxy)
+        const idRes = await fetch("https://users.roproxy.com/v1/usernames/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ usernames: [input], excludeBannedUsers: false })
         });
         const idData = await idRes.json();
 
-        if (!idData.data || idData.data.length === 0) {
-          alert("User not found or invalid username.");
-          return;
-        }
+        if (!idData.data?.length) throw new Error("User not found");
 
         const userId = idData.data[0].id;
 
-        // Step 2: Get full user info by ID (GET)
-        const userRes = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+        // Full user info
+        const userRes = await fetch(`https://users.roproxy.com/v1/users/${userId}`);
         const user = await userRes.json();
 
-        // Display results
-        document.getElementById("avatar").src = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
-        document.getElementById("avatar").style.display = "block";
+        // Show results
+        document.getElementById("avatar").src = `https://thumbnails.roproxy.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
         document.getElementById("displayName").textContent = user.displayName || user.name;
         document.getElementById("name").textContent = user.name;
         document.getElementById("id").textContent = user.id;
-        document.getElementById("created").textContent = new Date(user.created).toLocaleDateString();
-        document.getElementById("desc").textContent = user.description || "No description set.";
+        document.getElementById("created").textContent = new Date(user.created).toDateString();
+        document.getElementById("desc").textContent = user.description?.slice(0, 200) + (user.description?.length > 200 ? "..." : "") || "No bio set.";
         document.getElementById("profileLink").href = `https://www.roblox.com/users/${userId}/profile`;
         document.getElementById("result").style.display = "block";
 
       } catch (err) {
-        alert("Error fetching data. Roblox API might be rate-limited or down.");
+        alert("Couldn't fetch — maybe invalid name or rate limit. Try again.");
         console.error(err);
       }
     });
