@@ -3,33 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Profile Stats</title>
+  <title>Just a Picture</title>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(#0f0f1a, #1a1a2e); color: #e0e0ff; margin:0; padding:20px; text-align:center; }
-    h1 { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
-    #loading { font-size: 20px; color: #00ffff; margin: 50px; display: none; }
-    #result { margin: 40px auto; max-width: 700px; background: #111122; padding: 30px; border-radius: 12px; border: 1px solid #00ffff33; display: none; }
-    #avatar { width: 200px; height: 200px; border-radius: 50%; border: 4px solid #00ffff; box-shadow: 0 0 20px #00ffff66; margin-bottom: 20px; }
-    p strong { color: #00ffff; }
-    .error { color: #ff4444; font-weight: bold; }
+    body { margin:0; height:100vh; background:#000; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+    img { max-width:95vw; max-height:95vh; object-fit:contain; border-radius:12px; box-shadow:0 0 30px rgba(0,255,255,0.3); }
   </style>
 </head>
 <body>
-  <h1>Roblox Profile Stats</h1>
-  <div id="loading">Loading profile stats...</div>
-  <div id="result">
-    <img id="avatar" src="" alt="Avatar">
-    <h2 id="displayName"></h2>
-    <p><strong>Username:</strong> <span id="name"></span></p>
-    <p><strong>User ID:</strong> <span id="id"></span></p>
-    <p><strong>Joined:</strong> <span id="created"></span></p>
-    <p><strong>About:</strong> <span id="desc"></span></p>
-    <p><strong>Friends:</strong> <span id="friendsCount">—</span></p>
-    <p><strong>Followers:</strong> <span id="followersCount">—</span></p>
-    <p><strong>Following:</strong> <span id="followingsCount">—</span></p>
-    <p><strong>Estimated Value (RAP):</strong> <span id="rap">Private — <a href="#" id="rolimonsLink" target="_blank" style="color:#00ffff;">Check on Rolimons</a></span></p>
-    <p><a id="profileLink" href="#" target="_blank" style="color:#00ffff; text-decoration:none; font-weight:bold;">Open Profile →</a></p>
-  </div>
+  <img src="https://picsum.photos/seed/stormed/900/600" alt="Random image">
 
   <script src="script.js"></script>
 </body>
